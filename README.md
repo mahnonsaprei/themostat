@@ -18,6 +18,6 @@ You can see all the details of the project here: https://hackaday.io/project/129
   Main scope of this fork is to connect with my home assistant.
   
   You need to import only umqtt.simple from here: https://github.com/micropython/micropython-lib/tree/master/umqtt.simple/umqtt
-  No matter from ssd1306 library you don't need to import, just this line: from ssd1306 import SSD1306_I2C
+  No matter from ssd1306 library you don't need to import, just this line: "from ssd1306 import SSD1306_I2C"
   Post google plus: https://plus.google.com/104340292881255677295/posts/eQ2Ey7Q81Mm?hl=it
   
