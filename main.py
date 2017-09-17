@@ -23,12 +23,15 @@
  * THE SOFTWARE.
 
 '''
+* Modified by Marcello Colangelo
 
 #This part is to connect to the WiFi
-#In this case: SSID: TP-LINK_F3D4B2 & PASS: 90546747
+#In this case: SSID:  & PASS:
 
-WIFISSID='TP-LINK_F3D4B2'
-WIFIPASS='90546747'
+WIFISSID='INSERT_YOUR_SSD_HERE'
+WIFIPASS='INSERT_YOUR_WIFI_PASSWOR_HERE'
+
+from network import WLAN
 
 def do_connect():
     from network import WLAN
@@ -45,21 +48,19 @@ def do_connect():
 
 from machine import Pin
 
-led = Pin(2, Pin.OUT, value=1)
+led = Pin(14, Pin.OUT, value=1)
 
 #---MQTT Sending---
-
 from time import sleep_ms
 from ubinascii import hexlify
 from machine import unique_id
-#import socket
-from umqtt import MQTTClient
+from simple import MQTTClient #Import umqtt.simple https://github.com/micropython/micropython-lib/tree/master/umqtt.simple/umqtt
 
-SERVER = "192.168.0.101"
+SERVER = "192.168.1.8"
 CLIENT_ID = hexlify(unique_id())
-TOPIC1 = b"/sensor1/tem"
-TOPIC2 = b"/sensor1/hum"
-TOPIC3 = b"/sensor1/led"
+TOPIC1 = "sensor1/tem" #Topic for temperature in home assistant
+TOPIC2 = "sensor1/hum" #Topic for Humidity in home assistant
+TOPIC3 = b"sensor1/led" #Topic to command state of led
 
 def envioMQTT(server=SERVER, topic="/foo", dato=None):
     try:
@@ -73,17 +74,17 @@ def envioMQTT(server=SERVER, topic="/foo", dato=None):
         pass
         #led.value(0)
 
-state = 0
-
 def sub_cb(topic, msg):
     global state
     print((topic, msg))
     if msg == b"on":
-        led.value(0)
+        led.value(1)
         state = 1
     elif msg == b"off":
-        led.value(1)
+        led.value(0)
         state = 0
+
+state = 0
 
 def recepcionMQTT(server=SERVER, topic=TOPIC3):
     c = MQTTClient(CLIENT_ID, server)
@@ -91,13 +92,15 @@ def recepcionMQTT(server=SERVER, topic=TOPIC3):
     c.set_callback(sub_cb)
     c.connect()
     c.subscribe(topic)
-    #print("Connected to %s, subscribed to %s topic" % (server, topic))
+    print("Connected to %s, subscribed to %s topic" % (server, topic))
     try:
         c.wait_msg()
     finally:
         c.disconnect()
+    sleep_ms(100)
 
-#---End MQTT Sending---
+
+
 
 #---DHT22---
 from dht import DHT22
@@ -124,26 +127,43 @@ from machine import I2C
 i2c = I2C(sda = Pin(4), scl = Pin(5))
 display = SSD1306_I2C(128, 64, i2c)
 
-def displaytem(tem,hum):
+#---RECEIVE WEATHERUNDERGROUND---
+import urequests
+
+def weather():
+    import urequests
+    r = urequests.get("http://api.wunderground.com/api/INSERT_YOUR_API_HERE/conditions/q/IT/Naples.json").json() #Request json to recevie weather info
+    temperature = r['current_observation']['temp_c']
+    humidityInt = r['current_observation']['relative_humidity']
+    return (temperature, humidityInt) # Ritorna il valore della variabile da passare alla funzione
+    print(temperature, humidityInt)
+
+#---END RECEIVE WEATHER---
+
+def displaytem(tem,hum,temperature,humidityInt): #import Variables in definition function
     display.fill(0)
-    temperatura = 'Tem: ' + str(tem)[:5] + 'C'
-    humedad = 'Hum: ' + str(hum)[:5] + '%'
+    temperatura = 'Tem int: ' + str(tem)[:5] + 'C'
+    humedad = 'Hum int: ' + str(hum)[:5] + '%'
+    weatherNapoli = 'Tem ext: ' + str(temperature)[:5] + 'C' #Assign weather variableNapoli the value of temperature
+    weatherNapoliHumidity = 'Hum ext: ' + str(humidityInt)[:5] + ''
+    ip = str(sta_if.ifconfig())
     display.text(temperatura,2,2,1)
     display.text(humedad,2,14,1)
+    display.text(ip,2,30,1)
+    display.text(weatherNapoli,2,40,1) #Show on lcd value of temp
+    display.text(weatherNapoliHumidity,2,50,1) #Show on lcd value of Hum
     display.show()
 
-#---End OLED---
 
-
-#---Main Program---
-sleep_ms(10000)
+sleep_ms(3000)
 
 while True:
+    (temperature,humidityInt) = weather()
     (tem,hum) = medirTemHum()
-    displaytem(tem,hum)
+    displaytem(tem,hum,temperature,humidityInt)
     envioMQTT(SERVER,TOPIC1,str(tem))
     envioMQTT(SERVER,TOPIC2,str(hum))
     recepcionMQTT()
-    sleep_ms(10000)
+    sleep_ms(300000)
 
 #---END Main Program---
