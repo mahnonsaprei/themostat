@@ -23,7 +23,7 @@
  * THE SOFTWARE.
 
 '''
-* Modified by Marcello Colangelo
+#---Modified by Marcello Colangelo---
 
 #This part is to connect to the WiFi
 #In this case: SSID:  & PASS:
